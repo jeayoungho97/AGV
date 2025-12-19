@@ -1,0 +1,17 @@
+version: 1
+encoding: json
+topics:
+  items:
+    topic: agv/ai/items
+    direction: ai_node -> planner_node
+    payload_schema: schemas/items.schema.json
+    description: AI/voice result items list
+    qos: 1
+    retained: false
+  global_path:
+    topic: agv/planner/global_path
+    direction: planner_node -> control_node
+    payload_schema: schemas/path.schema.json
+    description: Global path waypoints for control
+    qos: 1
+    retained: false

@@ -1,0 +1,2 @@
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ar qc libagv_core.a CMakeFiles/agv_core.dir/src/io.cpp.o CMakeFiles/agv_core.dir/src/planner.cpp.o
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ranlib libagv_core.a

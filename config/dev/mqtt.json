@@ -1,0 +1,12 @@
+{
+  "broker": "localhost",
+  "port": 1883,
+  "client_id": "agv_dev",
+  "username": "",
+  "password": "",
+  "keepalive": 60,
+  "topics": {
+    "items": "agv/ai/items",
+    "global_path": "agv/planner/global_path"
+  }
+}

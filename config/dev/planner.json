@@ -1,0 +1,8 @@
+{
+  "map_file": "data/poi/store_A_poi.json",
+  "frame": "map",
+  "use_diagonal": true,
+  "heuristic": "euclidean",
+  "allow_replan": true,
+  "output_topic": "agv/planner/global_path"
+}
