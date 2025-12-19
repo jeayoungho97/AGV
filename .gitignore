@@ -1,0 +1,19 @@
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Env secrets
+.env
+
+# C++ build outputs
+cpp/build/
+build/
+
+# Logs
+*.log
+
