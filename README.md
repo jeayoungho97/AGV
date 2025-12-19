@@ -104,6 +104,11 @@ agv-jetson/
 3. MQTT 통신 연결
 4. 실물 AGV 연결 후 Control/Localization 추가
 
+## 음성 입력(휴대폰 웹) 옵션
+휴대폰에서 웹으로 음성 인식(브라우저 SpeechRecognition) → 텍스트를 OpenAI로 `items` JSON 파싱 → MQTT로 발행하는 웹 UI를 제공합니다.
+
+- 실행: `python/webapp/README.md`
+
 ## 실물 AGV 연결 시 변경 범위
 - Control Node(경로 추종, 모터 제어) 추가/교체
 - Localization 입력(오도메트리, IMU, 마커 등) 연결
