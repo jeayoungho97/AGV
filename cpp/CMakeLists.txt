@@ -10,6 +10,19 @@ add_library(agv_core STATIC
 )
 target_include_directories(agv_core PUBLIC ${PROJECT_SOURCE_DIR}/include)
 
+# Optional MQTT planner node (requires libmosquitto).
+find_package(PkgConfig QUIET)
+if(PkgConfig_FOUND)
+  pkg_check_modules(MOSQUITTO QUIET libmosquitto)
+endif()
+
+if(MOSQUITTO_FOUND)
+  add_executable(planner_mqtt_main apps/planner_mqtt_main.cpp)
+  target_include_directories(planner_mqtt_main PRIVATE ${MOSQUITTO_INCLUDE_DIRS})
+  target_link_libraries(planner_mqtt_main PRIVATE agv_core ${MOSQUITTO_LIBRARIES})
+  target_compile_options(planner_mqtt_main PRIVATE ${MOSQUITTO_CFLAGS_OTHER})
+endif()
+
 add_executable(sim_main apps/sim_main.cpp)
 target_link_libraries(sim_main PRIVATE agv_core)
 

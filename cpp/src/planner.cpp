@@ -30,7 +30,7 @@ Path build_path(const std::vector<Item>& items, const std::vector<Poi>& poi_list
 
   Path path;
   path.frame = frame;
-  path.created_ms = now_ms();
+  path.created_ms = unix_ms();
 
   // Start at entrance if present.
   Poi current = poi_map.count("entrance") ? poi_map["entrance"] : Poi{"start", 0.0, 0.0};
