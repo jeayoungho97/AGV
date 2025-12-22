@@ -1,5 +1,5 @@
 {
-  "map_file": "data/poi/store_A_poi.json",
+  "map_file": "data/poi/store_A_grid_map.json",
   "frame": "map",
   "use_diagonal": true,
   "heuristic": "euclidean",
