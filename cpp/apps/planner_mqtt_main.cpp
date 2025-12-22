@@ -4,8 +4,7 @@
 #include <csignal>
 #include <fstream>
 #include <iostream>
-#include <regex>
-#include <sstream>
+#include <nlohmann/json.hpp>
 #include <stdexcept>
 #include <string>
 
@@ -17,34 +16,34 @@ std::atomic<bool> g_should_exit{false};
 
 void on_signal(int) { g_should_exit.store(true); }
 
-std::string read_all(const std::string& path) {
+std::string json_get_string(const nlohmann::json& j, const std::string& key, const std::string& default_value) {
+  if (const auto it = j.find(key); it != j.end() && it->is_string()) {
+    return it->get<std::string>();
+  }
+  return default_value;
+}
+
+int json_get_int(const nlohmann::json& j, const std::string& key, int default_value) {
+  if (const auto it = j.find(key); it != j.end() && it->is_number_integer()) {
+    return it->get<int>();
+  }
+  return default_value;
+}
+
+std::string json_get_topic(const nlohmann::json& mqtt_json, const std::string& topic_key, const std::string& default_value) {
+  if (const auto topics_it = mqtt_json.find("topics"); topics_it != mqtt_json.end() && topics_it->is_object()) {
+    const auto& topics = *topics_it;
+    if (const auto topic_it = topics.find(topic_key); topic_it != topics.end() && topic_it->is_string()) {
+      return topic_it->get<std::string>();
+    }
+  }
+  return default_value;
+}
+
+nlohmann::json parse_json_file(const std::string& path) {
   std::ifstream in(path);
   if (!in) throw std::runtime_error("Failed to open file: " + path);
-  std::ostringstream ss;
-  ss << in.rdbuf();
-  return ss.str();
-}
-
-std::string json_get_string(const std::string& json, const std::string& key, const std::string& default_value) {
-  std::regex re("\\\"" + key + "\\\"\\s*:\\s*\\\"([^\\\"]*)\\\"");
-  std::smatch m;
-  if (std::regex_search(json, m, re)) return m[1].str();
-  return default_value;
-}
-
-int json_get_int(const std::string& json, const std::string& key, int default_value) {
-  std::regex re("\\\"" + key + "\\\"\\s*:\\s*(\\d+)");
-  std::smatch m;
-  if (std::regex_search(json, m, re)) return std::stoi(m[1].str());
-  return default_value;
-}
-
-std::string json_get_topic(const std::string& json, const std::string& topic_key, const std::string& default_value) {
-  // crude nested lookup: "topics": { "items": "..." }
-  std::regex re("\\\"topics\\\"\\s*:\\s*\\{[^}]*\\\"" + topic_key + "\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"");
-  std::smatch m;
-  if (std::regex_search(json, m, re)) return m[1].str();
-  return default_value;
+  return nlohmann::json::parse(in, nullptr, true, true);
 }
 
 struct Runtime {
@@ -80,8 +79,8 @@ int main(int argc, char* argv[]) {
   const std::string planner_config_path = argc > 2 ? argv[2] : "config/dev/planner.json";
 
   try {
-    const std::string mqtt_cfg = read_all(mqtt_config_path);
-    const std::string planner_cfg = read_all(planner_config_path);
+    const nlohmann::json mqtt_cfg = parse_json_file(mqtt_config_path);
+    const nlohmann::json planner_cfg = parse_json_file(planner_config_path);
 
     const std::string broker = json_get_string(mqtt_cfg, "broker", "localhost");
     const int port = json_get_int(mqtt_cfg, "port", 1883);
