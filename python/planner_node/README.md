@@ -58,3 +58,16 @@ This node also loads `.env` from the repo root (if present) so you can share set
 - `poi`: items/entrance/checkout in cell coordinates; world coords are auto-derived
 
 If you supply a legacy POI-only file (no `width`/`height`/`resolution`), the planner falls back to straight-line paths without obstacle avoidance.
+
+### Clearance
+`obstacle_clearance_m` in `config/dev/planner.json` inflates obstacles by that radius (meters) to keep the AGV body offset. Example: `0.1` (10cm) with 5cm resolution expands each obstacle by 2 cells in all directions.
+
+## Docker Compose (MQTT + Planner)
+Cross-platform dev (Mac/Windows) with a shared setup:
+```bash
+docker compose up --build
+```
+- MQTT broker: `eclipse-mosquitto` with config at `docker/mosquitto.conf`
+- Planner: builds from `docker/Dockerfile.planner`, mounts repo into `/app`, uses `config/dev/mqtt.docker.json` (broker host `mqtt`)
+
+Send `items` to `agv/ai/items` (same as bare-metal), and the planner publishes `agv/planner/global_path`. Stop with `Ctrl+C` or `docker compose down`.

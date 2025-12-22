@@ -109,6 +109,23 @@ def load_grid_map(poi_file: Path) -> Optional[GridMap]:
     )
 
 
+def inflate_obstacles(grid: GridMap, clearance_m: float) -> None:
+    """Inflate obstacles by a clearance radius in meters."""
+    if clearance_m <= 0:
+        return
+    cells = int(math.ceil(clearance_m / grid.resolution))
+    if cells <= 0:
+        return
+    inflated: Set[Coordinate] = set(grid.obstacles)
+    for ox, oy in grid.obstacles:
+        for dx in range(-cells, cells + 1):
+            for dy in range(-cells, cells + 1):
+                nx, ny = ox + dx, oy + dy
+                if 0 <= nx < grid.width and 0 <= ny < grid.height:
+                    inflated.add((nx, ny))
+    grid.obstacles = inflated
+
+
 def dist(a, b) -> float:
     return math.hypot(a[0] - b[0], a[1] - b[1])
 
@@ -202,7 +219,7 @@ def plan_path_grid(items_payload: dict, grid: GridMap, use_diagonal: bool, heuri
         cell_path.extend(segment)
 
     world_points = _grid_cells_to_world(cell_path, grid)
-    waypoints = [{"x": x, "y": y} for x, y in world_points]
+    waypoints = [{"x": round(x, 2), "y": round(y, 2)} for x, y in world_points]
     total_cost = sum(dist(world_points[i - 1], world_points[i]) for i in range(1, len(world_points)))
 
     return {
@@ -274,6 +291,8 @@ def main():
     frame = planner_cfg.get("frame", "map")
     poi_map = None
     if grid_map:
+        clearance_m = float(planner_cfg.get("obstacle_clearance_m", 0.0))
+        inflate_obstacles(grid_map, clearance_m)
         frame = grid_map.frame or frame
     else:
         poi_map = build_poi_map(poi_file)
