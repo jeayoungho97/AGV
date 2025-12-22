@@ -3,6 +3,7 @@
   "frame": "map",
   "use_diagonal": true,
   "heuristic": "euclidean",
+  "obstacle_clearance_m": 0.1,
   "allow_replan": true,
   "output_topic": "agv/planner/global_path"
 }
