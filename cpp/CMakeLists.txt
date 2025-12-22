@@ -17,9 +17,11 @@ if(PkgConfig_FOUND)
 endif()
 
 if(MOSQUITTO_FOUND)
+  find_package(nlohmann_json CONFIG REQUIRED)
   add_executable(planner_mqtt_main apps/planner_mqtt_main.cpp)
   target_include_directories(planner_mqtt_main PRIVATE ${MOSQUITTO_INCLUDE_DIRS})
-  target_link_libraries(planner_mqtt_main PRIVATE agv_core ${MOSQUITTO_LIBRARIES})
+  target_link_directories(planner_mqtt_main PRIVATE ${MOSQUITTO_LIBRARY_DIRS})
+  target_link_libraries(planner_mqtt_main PRIVATE agv_core ${MOSQUITTO_LIBRARIES} nlohmann_json::nlohmann_json)
   target_compile_options(planner_mqtt_main PRIVATE ${MOSQUITTO_CFLAGS_OTHER})
 endif()
 
