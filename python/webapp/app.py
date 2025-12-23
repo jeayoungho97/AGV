@@ -163,6 +163,13 @@ def api_config():
     return {
         "broker": cfg.get("broker", "localhost"),
         "port": cfg.get("port", 1883),
+        "ws_url": cfg.get("ws_url"),
+        "ws_host": cfg.get("ws_host") or cfg.get("broker", "localhost"),
+        "ws_port": cfg.get("ws_port", cfg.get("port", 1883)),
+        "ws_path": cfg.get("ws_path", "/mqtt"),
+        "ws_tls": bool(cfg.get("ws_tls", False)),
+        "ws_username": cfg.get("ws_username") or cfg.get("username") or "",
+        "ws_password": cfg.get("ws_password") or cfg.get("password") or "",
         "items_topic": cfg.get("topics", {}).get("items", "agv/ai/items"),
         "path_topic": cfg.get("topics", {}).get("global_path", "agv/planner/global_path"),
         "pose_topic": cfg.get("topics", {}).get("pose", "agv/state/pose"),

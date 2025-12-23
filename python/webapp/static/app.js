@@ -1,3 +1,4 @@
+import mqtt from "https://unpkg.com/mqtt/dist/mqtt.esm.js";
 import {
   computed,
   createApp,
@@ -7,7 +8,8 @@ import {
   ref,
 } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
 
-const POLL_MS = 2000;
+const MQTT_RECONNECT_MS = 3000;
+const MQTT_TIMEOUT_MS = 5000;
 const COMMAND_KEYWORDS = {
   go: ["출발", "가자", "이동", "앞으로", "go", "start", "run"],
   stop: ["멈춰", "멈춤", "정지", "스탑", "stop", "그만", "halt"],
@@ -160,6 +162,7 @@ createApp({
       pose_topic: "agv/state/pose",
       command_topic: "agv/web/command",
       path_topic: "agv/planner/global_path",
+      items_topic: "agv/ai/items",
       last_seen_ms: null,
     });
 
@@ -175,8 +178,13 @@ createApp({
     const transcript = ref("");
     const interim = ref("");
     const lastCommand = ref(null);
-    const mqttHost = ref("localhost");
-    const mqttPort = ref(1883);
+    const mqttWsHost = ref(window.location.hostname || "localhost");
+    const mqttWsPort = ref(9001);
+    const mqttWsPath = ref("/mqtt");
+    const mqttUseTls = ref(false);
+    const mqttWsUrl = ref("");
+    const mqttUser = ref("");
+    const mqttPass = ref("");
     const pathProgress = ref(1);
     let pathAnimId = null;
     let pathAnimLoopId = null;
@@ -184,7 +192,8 @@ createApp({
     let targetPoiIds = [];
 
     let recognition = null;
-    let pollTimer = null;
+    let mqttClient = null;
+    const decoder = new TextDecoder();
 
     const statusText = computed(() => status.value || "대기");
     const poseText = computed(() => {
@@ -204,6 +213,7 @@ createApp({
     const commandTopic = computed(() => telemetry.command_topic || "agv/web/command");
     const poseTopic = computed(() => telemetry.pose_topic || "agv/state/pose");
     const pathTopic = computed(() => telemetry.path_topic || "agv/planner/global_path");
+    const itemsTopic = computed(() => telemetry.items_topic || "agv/ai/items");
     const itemsJson = computed(() => {
       if (!itemsPreview.value) return "{}";
       return JSON.stringify(itemsPreview.value, null, 2);
@@ -268,53 +278,126 @@ createApp({
         const res = await fetch("/api/config");
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
-        mqttHost.value = data.broker || mqttHost.value;
-        mqttPort.value = data.port || mqttPort.value;
-      } catch (_) {
-        // optional
-      }
-    }
-
-    async function fetchState() {
-      try {
-        const res = await fetch("/api/state");
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
-        telemetry.connected = Boolean(data.connected);
-        telemetry.last_error = data.last_error || "";
+        mqttWsUrl.value = data.ws_url || "";
+        mqttWsHost.value = data.ws_host || data.broker || mqttWsHost.value;
+        mqttWsPort.value = data.ws_port || data.port || mqttWsPort.value;
+        mqttWsPath.value = data.ws_path || mqttWsPath.value;
+        mqttUseTls.value = Boolean(data.ws_tls);
+        mqttUser.value = data.ws_username || data.username || mqttUser.value;
+        mqttPass.value = data.ws_password || data.password || mqttPass.value;
         telemetry.pose_topic = data.pose_topic || telemetry.pose_topic;
         telemetry.command_topic = data.command_topic || telemetry.command_topic;
         telemetry.path_topic = data.path_topic || telemetry.path_topic;
-        telemetry.last_seen_ms = data.last_seen_ms || data.updated_ms || telemetry.last_seen_ms;
-        pose.value = data.pose || null;
-        status.value = data.status || "";
-        if (data.path) {
-          const stamp = data.path.created_ms || Date.now();
-          if (!lastPathStamp || stamp !== lastPathStamp) {
-            lastPathStamp = stamp;
-            pathMeta.value = data.path;
-            const names = [];
-            if (Array.isArray(pathMeta.value.waypoints)) {
-              // use itemsPreview if present
-              if (itemsPreview.value && Array.isArray(itemsPreview.value.items)) {
-                itemsPreview.value.items.forEach((it) => {
-                  if (it.name) names.push(it.name);
-                });
-              }
-            }
-            targetPoiIds = names;
-            planning.value = false;
-            pathProgress.value = 0;
-            startPathAnimation();
-            startPathLoop();
-          } else if (!pathAnimLoopId) {
-            startPathLoop();
-          }
-        }
-        draw();
+        telemetry.items_topic = data.items_topic || telemetry.items_topic;
       } catch (e) {
-        error.value = `상태 조회 실패: ${e.message}`;
+        info.value = info.value || `MQTT 설정 로드 실패, 기본값 사용 (${e.message || e})`;
       }
+    }
+
+    function handlePoseUpdate(payload) {
+      const posePayload =
+        payload.pose ||
+        {
+          x: payload.x,
+          y: payload.y,
+          theta: payload.theta,
+        };
+      const ts = payload.timestamp_ms || payload.created_ms || Date.now();
+      pose.value = posePayload;
+      status.value = payload.status || status.value;
+      telemetry.last_seen_ms = ts;
+      draw();
+    }
+
+    function handlePathUpdate(payload) {
+      const stamp = payload.created_ms || payload.timestamp_ms || Date.now();
+      if (lastPathStamp && stamp === lastPathStamp) {
+        if (!pathAnimLoopId) startPathLoop();
+        return;
+      }
+      lastPathStamp = stamp;
+      pathMeta.value = payload;
+      const names = [];
+      if (itemsPreview.value && Array.isArray(itemsPreview.value.items)) {
+        itemsPreview.value.items.forEach((it) => {
+          if (it.name) names.push(it.name);
+        });
+      }
+      targetPoiIds = names;
+      planning.value = false;
+      pathProgress.value = 0;
+      startPathAnimation();
+      startPathLoop();
+      draw();
+    }
+
+    function handleMqttMessage(topic, message) {
+      let text = "";
+      try {
+        text = typeof message === "string" ? message : decoder.decode(message);
+        const payload = JSON.parse(text);
+        if (topic === poseTopic.value) {
+          handlePoseUpdate(payload);
+        } else if (topic === pathTopic.value) {
+          handlePathUpdate(payload);
+        }
+      } catch (_) {
+        // ignore malformed payloads
+      }
+    }
+
+    function subscribeTopics() {
+      if (!mqttClient) return;
+      const subs = [poseTopic.value, pathTopic.value].filter(Boolean);
+      if (!subs.length) return;
+      mqttClient.subscribe(subs, { qos: 1 }, (err) => {
+        if (err) {
+          telemetry.last_error = `구독 실패: ${err.message || err}`;
+        }
+      });
+    }
+
+    function connectMqtt() {
+      if (mqttClient) {
+        try {
+          mqttClient.end(true);
+        } catch (_) {
+          // ignore
+        }
+      }
+      const path = mqttWsPath.value.startsWith("/") ? mqttWsPath.value : `/${mqttWsPath.value}`;
+      const proto = mqttUseTls.value ? "wss" : "ws";
+      const url = mqttWsUrl.value || `${proto}://${mqttWsHost.value}:${mqttWsPort.value}${path}`;
+      const clientId = `agv_web_${Math.random().toString(16).slice(2, 10)}`;
+      const opts = {
+        clientId,
+        keepalive: 60,
+        reconnectPeriod: MQTT_RECONNECT_MS,
+        connectTimeout: MQTT_TIMEOUT_MS,
+        clean: true,
+      };
+      if (mqttUser.value) opts.username = mqttUser.value;
+      if (mqttPass.value) opts.password = mqttPass.value;
+
+      telemetry.last_error = "";
+      telemetry.connected = false;
+      mqttClient = mqtt.connect(url, opts);
+
+      mqttClient.on("connect", () => {
+        telemetry.connected = true;
+        telemetry.last_error = "";
+        subscribeTopics();
+      });
+      mqttClient.on("reconnect", () => {
+        telemetry.connected = false;
+      });
+      mqttClient.on("close", () => {
+        telemetry.connected = false;
+      });
+      mqttClient.on("error", (err) => {
+        telemetry.last_error = err?.message || "MQTT error";
+      });
+      mqttClient.on("message", (topic, msg) => handleMqttMessage(topic, msg));
     }
 
     async function sendCommand(action, source = "ui", utterance = "") {
@@ -322,19 +405,15 @@ createApp({
       info.value = "";
       error.value = "";
       try {
-        const res = await fetch("/api/command", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action, source, utterance }),
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          throw new Error(data.detail || `HTTP ${res.status}`);
+        if (!mqttClient || !mqttClient.connected) {
+          throw new Error("MQTT 연결이 없습니다.");
         }
+        const payload = { action, source, utterance, requested_ms: Date.now() };
+        mqttClient.publish(commandTopic.value, JSON.stringify(payload), { qos: 1 });
         lastCommand.value = { action, source, utterance, at: Date.now() };
         info.value = action === "go" ? "Go 명령을 전송했습니다." : "Stop 명령을 전송했습니다.";
       } catch (e) {
-        error.value = `명령 전송 실패: ${e.message}`;
+        error.value = `명령 전송 실패: ${e.message || e}`;
       } finally {
         commandBusy.value = false;
       }
@@ -343,8 +422,13 @@ createApp({
     const sendGo = () => sendCommand("go", "button");
     const sendStop = () => sendCommand("stop", "button");
     const refreshState = () => {
-      fetchState();
-      info.value = "상태 갱신";
+      if (!mqttClient || !mqttClient.connected) {
+        connectMqtt();
+        info.value = "MQTT 재연결 시도";
+      } else {
+        subscribeTopics();
+        info.value = "MQTT 상태 갱신";
+      }
     };
 
     function initSpeech() {
@@ -412,14 +496,11 @@ createApp({
     async function clearPath() {
       clearingPath.value = true;
       try {
-        await fetch("/api/clear_path", { method: "POST" });
         pathMeta.value = null;
         stopPathAnimation();
         stopPathLoop();
         info.value = "경로를 지웠습니다.";
         draw();
-      } catch (_) {
-        // optional UI feedback
       } finally {
         clearingPath.value = false;
       }
@@ -451,6 +532,13 @@ createApp({
       }
     }
 
+    function publishItemsPayload(payload) {
+      if (!mqttClient || !mqttClient.connected) {
+        throw new Error("MQTT 연결이 없습니다.");
+      }
+      mqttClient.publish(itemsTopic.value, JSON.stringify(payload), { qos: 1 });
+    }
+
     async function requestPathFromText(source = "ui") {
       const text = itemsText.value.trim();
       if (!text) {
@@ -465,18 +553,20 @@ createApp({
       error.value = "";
       planning.value = true;
       try {
-        const res = await fetch("/api/publish", {
+        const res = await fetch("/api/parse", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
-        if (data.items) itemsPreview.value = data.items;
+        const payload = data.items ? { items: data.items } : data;
+        itemsPreview.value = payload;
+        publishItemsPayload(payload);
         lastCommand.value = { action: "items", source, utterance: text, at: Date.now() };
-        info.value = "발행 완료. planner가 global_path를 보내면 지도에 표시됩니다.";
+        info.value = "items 발행 완료. planner가 global_path를 보내면 지도에 표시됩니다.";
       } catch (e) {
-        error.value = `경로 요청 실패: ${e.message}`;
+        error.value = `경로 요청 실패: ${e.message || e}`;
         planning.value = false;
       }
     }
@@ -742,19 +832,18 @@ createApp({
       }
     }
 
-    onMounted(() => {
+    onMounted(async () => {
+      await fetchConfig();
+      connectMqtt();
       fetchMap();
-      fetchConfig();
-      fetchState();
-      pollTimer = setInterval(fetchState, POLL_MS);
       initSpeech();
       window.addEventListener("resize", draw);
     });
 
     onBeforeUnmount(() => {
-      if (pollTimer) clearInterval(pollTimer);
       window.removeEventListener("resize", draw);
       if (recognition) recognition.stop();
+      if (mqttClient) mqttClient.end(true);
     });
 
     return {
@@ -775,14 +864,13 @@ createApp({
       itemsText,
       itemsJson,
       pathMeta,
-      mqttHost,
-      mqttPort,
       statusText,
       poseText,
       lastSeenText,
       commandTopic,
       poseTopic,
       pathTopic,
+      itemsTopic,
       startListening,
       stopListening,
       sendGo,

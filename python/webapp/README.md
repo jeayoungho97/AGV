@@ -28,6 +28,17 @@ uvicorn python.webapp.app:app --host 0.0.0.0 --port 8000
 Open from your phone (same Wi‑Fi):
 - `http://<YOUR_PC_LAN_IP>:8000`
 
+## MQTT over WebSocket
+- The web UI now subscribes/publishes directly via MQTT over WebSocket (pose/path/command/items).
+- Configure `ws_host`, `ws_port`, `ws_path`, `ws_tls`, `ws_username`, `ws_password` (or a full `ws_url`) in `config/dev/mqtt.json`.
+- Mosquitto example (without TLS):
+  ```conf
+  listener 9001
+  protocol websockets
+  ```
+  Then set `ws_port: 9001`, `ws_path: "/mqtt"` (or the path you exposed).
+- For TLS, expose a `wss://` listener and set `ws_tls: true` plus any auth your broker requires.
+
 ## Notes
 - SpeechRecognition support depends on browser/OS. If unsupported, type text and publish.
 - iOS Safari often requires HTTPS for mic access; for iOS, use a tunnel (ngrok/cloudflared) or run behind HTTPS.

@@ -19,6 +19,7 @@ class AgvTelemetry:
         self.pose_topic = topics.get("pose", "agv/state/pose")
         self.cmd_topic = topics.get("command", "agv/web/command")
         self.path_topic = topics.get("global_path", "agv/planner/global_path")
+        self.items_topic = topics.get("items", "agv/ai/items")
 
         base_client_id = self.cfg.get("client_id", "agv_dev")
         self.client = mqtt.Client(client_id=f"{base_client_id}_web_ui")
@@ -121,6 +122,7 @@ class AgvTelemetry:
         state["pose_topic"] = self.pose_topic
         state["command_topic"] = self.cmd_topic
         state["path_topic"] = self.path_topic
+        state["items_topic"] = self.items_topic
         return state
 
     def clear_path(self) -> None:
