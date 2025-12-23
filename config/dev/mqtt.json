@@ -7,6 +7,8 @@
   "keepalive": 60,
   "topics": {
     "items": "agv/ai/items",
-    "global_path": "agv/planner/global_path"
+    "global_path": "agv/planner/global_path",
+    "pose": "agv/state/pose",
+    "command": "agv/web/command"
   }
 }
