@@ -3,58 +3,15 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>AGV Voice</title>
+    <title>AGV Command Center</title>
     <link rel="stylesheet" href="/static/style.css" />
   </head>
   <body>
-    <main class="container">
-      <header class="header">
-        <h1>AGV Voice</h1>
-        <p class="muted">휴대폰에서 음성으로 주문 → items JSON 발행 → Planner가 global_path 생성</p>
-      </header>
-
-      <section class="card">
-        <div class="row">
-          <button id="btnStart" class="btn primary">녹음 시작</button>
-          <button id="btnStop" class="btn" disabled>중지</button>
-          <button id="btnClear" class="btn">초기화</button>
-        </div>
-        <div class="row">
-          <label class="field">
-            <span>언어</span>
-            <select id="lang">
-              <option value="ko-KR" selected>ko-KR</option>
-              <option value="en-US">en-US</option>
-            </select>
-          </label>
-          <label class="field grow">
-            <span>인식 텍스트</span>
-            <input id="text" type="text" placeholder="예: 콜라 1개 라면 2개" />
-          </label>
-        </div>
-        <p id="status" class="muted"></p>
-        <div class="row">
-          <button id="btnParse" class="btn">AI로 items 만들기</button>
-          <button id="btnPublish" class="btn primary">items 발행</button>
-        </div>
-      </section>
-
-      <section class="card">
-        <h2>items JSON</h2>
-        <pre id="items" class="code">{}</pre>
-      </section>
-
-      <section class="card">
-        <h2>도움말</h2>
-        <ul class="list">
-          <li>브라우저가 음성인식을 지원하지 않으면 텍스트를 직접 입력해도 됨</li>
-          <li>AI 파싱/발행은 서버에 <code>OPENAI_API_KEY</code>가 있어야 동작</li>
-          <li>같은 Wi‑Fi에서 PC 서버를 <code>0.0.0.0</code>로 띄우면 휴대폰으로 접속 가능</li>
-        </ul>
-      </section>
-    </main>
-
-    <script src="/static/app.js"></script>
+    <div id="app" v-cloak>
+      <div class="container">
+        <p class="muted">AGV UI를 불러오는 중입니다…</p>
+      </div>
+    </div>
+    <script type="module" src="/static/app.js"></script>
   </body>
 </html>
-
