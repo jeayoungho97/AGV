@@ -150,7 +150,7 @@ def _heuristic(a: Coordinate, b: Coordinate, name: str) -> float:
     return math.hypot(dx, dy)
 
 
-def a_star(start: Coordinate, goal: Coordinate, grid: GridMap, use_diagonal: bool, heuristic: str) -> List[Coordinate]:
+def a_star(start: Coordinate, goal: Coordinate, grid: GridMap, use_diagonal: bool, heuristic: str, turn_penalty: float) -> List[Coordinate]:
     if start == goal:
         return [start]
 
@@ -158,6 +158,7 @@ def a_star(start: Coordinate, goal: Coordinate, grid: GridMap, use_diagonal: boo
     heapq.heappush(open_set, (0.0, start))
     came_from: Dict[Coordinate, Coordinate] = {}
     g_score: Dict[Coordinate, float] = {start: 0.0}
+    dir_from: Dict[Coordinate, Coordinate] = {}
 
     while open_set:
         _, current = heapq.heappop(open_set)
@@ -171,10 +172,19 @@ def a_star(start: Coordinate, goal: Coordinate, grid: GridMap, use_diagonal: boo
             return path
 
         for nb in _neighbors(current, grid, use_diagonal):
-            tentative = g_score[current] + math.hypot(nb[0] - current[0], nb[1] - current[1])
+            step_cost = math.hypot(nb[0] - current[0], nb[1] - current[1])
+            penalty = 0.0
+            if current in came_from:
+                prev = came_from[current]
+                prev_dir = (current[0] - prev[0], current[1] - prev[1])
+                new_dir = (nb[0] - current[0], nb[1] - current[1])
+                if prev_dir != new_dir:
+                    penalty = max(0.0, float(turn_penalty))
+            tentative = g_score[current] + step_cost + penalty
             if tentative >= g_score.get(nb, math.inf):
                 continue
             came_from[nb] = current
+            dir_from[nb] = (nb[0] - current[0], nb[1] - current[1])
             g_score[nb] = tentative
             f_score = tentative + _heuristic(nb, goal, heuristic)
             heapq.heappush(open_set, (f_score, nb))
@@ -186,7 +196,7 @@ def _grid_cells_to_world(path: List[Coordinate], grid: GridMap) -> List[Tuple[fl
     return [(grid.origin[0] + cx * grid.resolution, grid.origin[1] + cy * grid.resolution) for cx, cy in path]
 
 
-def plan_path_grid(items_payload: dict, grid: GridMap, use_diagonal: bool, heuristic: str) -> dict:
+def plan_path_grid(items_payload: dict, grid: GridMap, use_diagonal: bool, heuristic: str, turn_penalty: float) -> dict:
     items = items_payload.get("items")
     if not isinstance(items, list) or not items:
         raise ValueError("Invalid items payload: missing items array")
@@ -213,7 +223,7 @@ def plan_path_grid(items_payload: dict, grid: GridMap, use_diagonal: bool, heuri
     for idx in range(len(route) - 1):
         start = grid.poi[route[idx]].cell
         goal = grid.poi[route[idx + 1]].cell
-        segment = a_star(start, goal, grid, use_diagonal, heuristic)
+        segment = a_star(start, goal, grid, use_diagonal, heuristic, turn_penalty)
         if idx > 0 and segment and cell_path and segment[0] == cell_path[-1]:
             segment = segment[1:]
         cell_path.extend(segment)
@@ -270,7 +280,7 @@ def main():
     parser.add_argument("--mqtt", default="config/dev/mqtt.json", help="Path to mqtt.json")
     parser.add_argument("--planner", default="config/dev/planner.json", help="Path to planner.json")
     parser.add_argument("--once", action="store_true", help="Exit after processing one items message")
-    parser.add_argument("--timeout_s", type=float, default=30.0, help="Exit after N seconds (0 disables)")
+    parser.add_argument("--timeout_s", type=float, default=0.0, help="Exit after N seconds (0 disables)")
     args = parser.parse_args()
 
     repo_root = Path(__file__).resolve().parents[2]
@@ -298,6 +308,7 @@ def main():
         poi_map = build_poi_map(poi_file)
     use_diagonal = bool(planner_cfg.get("use_diagonal", True))
     heuristic = planner_cfg.get("heuristic", "euclidean")
+    turn_penalty = float(planner_cfg.get("turn_penalty", 0.0))
 
     base_client_id = mqtt_cfg.get("client_id", "agv_dev")
     client = mqtt.Client(client_id=f"{base_client_id}_planner")
@@ -319,7 +330,7 @@ def main():
         try:
             payload = json.loads(msg.payload.decode("utf-8"))
             if grid_map:
-                out = plan_path_grid(payload, grid_map, use_diagonal=use_diagonal, heuristic=heuristic)
+                out = plan_path_grid(payload, grid_map, use_diagonal=use_diagonal, heuristic=heuristic, turn_penalty=turn_penalty)
             else:
                 out = plan_path_direct(payload, poi_map, frame)
             cl.publish(path_topic, json.dumps(out), qos=1, retain=False)
