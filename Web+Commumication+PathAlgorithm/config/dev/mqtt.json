@@ -1,0 +1,20 @@
+{
+  "broker": "localhost",
+  "port": 1883,
+  "ws_host": "172.20.10.9",
+  "ws_port": 9001,
+  "ws_path": "/mqtt",
+  "ws_tls": false,
+  "client_id": "agv_dev",
+  "username": "",
+  "password": "",
+  "ws_username": "",
+  "ws_password": "",
+  "keepalive": 60,
+  "topics": {
+    "items": "agv/ai/items",
+    "global_path": "agv/planner/global_path",
+    "pose": "agv/state/pose",
+    "command": "agv/web/command"
+  }
+}

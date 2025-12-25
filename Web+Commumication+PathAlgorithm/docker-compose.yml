@@ -1,0 +1,28 @@
+version: "3.3"
+
+services:
+  mqtt:
+    image: eclipse-mosquitto:2
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./docker/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+
+  planner:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.planner
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    depends_on:
+      - mqtt
+    command:
+      - python
+      - python/planner_node/main.py
+      - --mqtt
+      - config/dev/mqtt.docker.json
+      - --planner
+      - config/dev/planner.json

@@ -1,0 +1,8 @@
+fastapi>=0.115.0
+uvicorn>=0.30.0
+paho-mqtt>=1.6.1
+python-dotenv>=1.0.1
+openai==1.30.1
+# Pin pydantic to v1 to avoid building pydantic-core on Jetson
+pydantic==1.10.12
+

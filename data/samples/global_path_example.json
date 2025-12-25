@@ -1,9 +1,0 @@
-{
-  "frame": "map",
-  "waypoints": [
-    { "x": 1.0, "y": 1.0 },
-    { "x": 1.2, "y": 1.0 }
-  ],
-  "total_cost": 12.3,
-  "created_ms": 0
-}

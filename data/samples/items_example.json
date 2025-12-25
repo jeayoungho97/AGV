@@ -1,7 +1,0 @@
-{
-  "items": [
-    { "name": "coke", "qty": 1 },
-    { "name": "ramen", "qty": 2 }
-  ],
-  "timestamp_ms": 0
-}

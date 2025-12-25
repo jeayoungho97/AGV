@@ -1,0 +1,8 @@
+numpy
+pyserial
+jetbot
+traitlets
+ipywidgets
+pyyaml
+paho-mqtt
+opencv-python
