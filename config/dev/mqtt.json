@@ -1,7 +1,7 @@
 {
-  "broker": "localhost",
+  "broker": "172.20.10.9",
   "port": 1883,
-  "ws_host": "localhost",
+  "ws_host": "172.20.10.9",
   "ws_port": 9001,
   "ws_path": "/mqtt",
   "ws_tls": false,
