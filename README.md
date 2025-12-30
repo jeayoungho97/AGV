@@ -1,4 +1,6 @@
 # AGV Jetson Nano Project
+<img width="46%" alt="main" src="https://github.com/user-attachments/assets/2073dd20-728c-4965-83b7-ac298bbf77c7" />
+<img width="52%" alt="systemachitecture" src="https://github.com/user-attachments/assets/3b2590bd-222a-4224-bcbc-8fde4a967a7d" />
 
 Jetson Nano 기반 AGV(스마트 카트) 프로젝트의 통합 문서입니다. 이 파일은 `Drive_Control`과 `Web` 모듈의 README를 통합하여 전체 구조, 실행 방법, 메시지 규격 및 기여 정보를 제공합니다.
 
