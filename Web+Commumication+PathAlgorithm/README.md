@@ -1,4 +1,7 @@
-# Web (agv-jetson)
+# Web + MQTT + A* Algorhthm (agv-jetson)
+<img width="33%" alt="d50f507339da4bfba9c3f5a078839e8bb7XP6h4sleVHU4g0-6" src="https://github.com/user-attachments/assets/9d98ae49-daac-4c66-accf-23e4a3bb461b" />
+<img width="33%" alt="d50f507339da4bfba9c3f5a078839e8bb7XP6h4sleVHU4g0-7" src="https://github.com/user-attachments/assets/284be216-61c0-4828-8d45-e280b477dc0b" />
+<img width="33%" alt="d50f507339da4bfba9c3f5a078839e8bb7XP6h4sleVHU4g0-8" src="https://github.com/user-attachments/assets/d11721cd-d0ab-4604-a9a4-2a68944927b5" />
 
 이 문서는 Web/플래너 관련 컴포넌트(웹 UI, AI 노드, 플래너 인터페이스 등)를 정리한 README 입니다. `Drive_Control/Readme.md`의 형식을 참고하여 구조화했습니다.
 
